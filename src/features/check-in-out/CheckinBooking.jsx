@@ -6,8 +6,15 @@ import Heading from "../../ui/Heading";
 import ButtonGroup from "../../ui/ButtonGroup";
 import Button from "../../ui/Button";
 import ButtonText from "../../ui/ButtonText";
+import CheckBox from "../../ui/Checkbox";
 
 import { useMoveBack } from "../../hooks/useMoveBack";
+import useBooking from "../bookings/useBooking";
+import Spinner from "../../ui/Spinner";
+import { useEffect, useState } from "react";
+import useCheckin from "./useCheckin";
+import useSettings from "../settings/useSettings";
+import { formatCurrency } from "../../utils/helpers";
 
 const Box = styled.div`
   /* Box */
@@ -18,21 +25,52 @@ const Box = styled.div`
 `;
 
 function CheckinBooking() {
+  const { booking, isLoading } = useBooking()
+  const [confirmPaid, setConfirmPaid] = useState(false)
+  const [addBreakFast, setAddBreakFast] = useState(false)
+  const { checkin, isLoading: isCheckedIn } = useCheckin()
+  const { settings, isLoading: isSettingsLoading} = useSettings()
   const moveBack = useMoveBack();
 
-  const booking = {};
-
+  
+  
   const {
-    id: bookingId,
+    bookingId,
     guests,
     totalPrice,
     numGuests,
     hasBreakfast,
     numNights,
-  } = booking;
+  } = booking || {};
 
-  function handleCheckin() {}
+  console.log(booking)
+  
+  const optionalBreakfastPrice = settings?.breakFastPrice;
 
+  function handleCheckin() {
+    if (!confirmPaid) return
+
+    if (addBreakFast) {
+      checkin({bookingId, breakfast: {
+        hasBreakFast: true,
+        extraPrice: optionalBreakfastPrice,
+        totalPrice: totalPrice + optionalBreakfastPrice
+
+      }})
+    } else {
+      checkin({bookingId, breakfast:{}})
+    }
+  }
+
+  useEffect(() => {
+    setConfirmPaid(booking?.isPaid ?? false)
+    console.log("rendered")
+    return () => console.log("re-rendered")
+  }, [booking])
+
+  if (!booking || isLoading || isSettingsLoading) {
+    return <Spinner />
+  }
   return (
     <>
       <Row type="horizontal">
@@ -42,8 +80,26 @@ function CheckinBooking() {
 
       <BookingDataBox booking={booking} />
 
+      <Box>
+        <CheckBox
+          checked={addBreakFast}
+          onChange={() => { setAddBreakFast(prev => !prev); setConfirmPaid(false) }}
+          disabled={booking?.isPaid}
+          id={"Breakfast"}
+        >Want to add breakfast for {optionalBreakfastPrice}</CheckBox>
+      </Box>
+
+      <Box>
+        <CheckBox
+          checked={confirmPaid}
+          onChange={() => setConfirmPaid(prev => !prev)}
+          disabled={confirmPaid || isCheckedIn}
+          id={"confirm"}
+        >I confirm That {guests?.fullName} has paid the total amount of {" "} {!addBreakFast ? formatCurrency(totalPrice) : `${formatCurrency?.(totalPrice + optionalBreakfastPrice)} (${formatCurrency?.(totalPrice)} + ${formatCurrency?.(optionalBreakfastPrice)})`}</CheckBox>
+      </Box>
+
       <ButtonGroup>
-        <Button onClick={handleCheckin}>Check in booking #{bookingId}</Button>
+        <Button onClick={handleCheckin} disabled={!confirmPaid} >Check in booking #{bookingId}</Button>
         <Button variation="secondary" onClick={moveBack}>
           Back
         </Button>
