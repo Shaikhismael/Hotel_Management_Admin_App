@@ -4,12 +4,13 @@ import { useParams } from 'react-router-dom'
 
 function useBooking() {
     const {bookingId} = useParams()
+    console.log(bookingId)
     const { 
         isLoading, 
         data: booking, 
         error, 
     } = useQuery({
-        queryKey: ['booking'],
+        queryKey: ['booking', bookingId],
         queryFn: () => getBooking(bookingId),
         // react query tries to fetch atleast 3 times
         // this will stop that fetching
