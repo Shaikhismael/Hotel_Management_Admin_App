@@ -85,23 +85,39 @@ export async function getStaysAfterDate(date) {
 
 // Activity means that there is a check in or a check out today
 export async function getStaysTodayActivity() {
+  const today = getToday(); debugger
+
   const { data, error } = await supabase
     .from("bookings")
     .select("*, guests(fullName, nationality, countryFlag)")
-    .or(
-      `and(status.eq.unconfirmed,startDate.eq.${getToday()}),and(status.eq.checked-in,endDate.eq.${getToday()})`
-    )
+    // .or(
+    //   `${filter}`
+    // )
     .order("created_at");
 
-  // Equivalent to this. But by querying this, we only download the data we actually need, otherwise we would need ALL bookings ever created
+
   // (stay.status === 'unconfirmed' && isToday(new Date(stay.startDate))) ||
   // (stay.status === 'checked-in' && isToday(new Date(stay.endDate)))
+
+  const filteredData = data.filter((item) => {
+    const startDate = item.startDate; 
+    const endDate = item.endDate;
+
+      if(item.status === "unconfirmed" && startDate === today) {
+        return item
+      }
+      if(item.status === "checked-in" && endDate === today) {
+        return item
+      }
+
+  });
 
   if (error) {
     console.error(error);
     throw new Error("Bookings could not get loaded");
   }
-  return data;
+  return filteredData;
+
 }
 
 export async function updateBooking(id, obj) {
